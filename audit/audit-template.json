@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "template": {
+    "event_id": "UUID",
+    "timestamp": "ISO-8601 UTC",
+    "event_type": "session_start | session_complete | session_failed | violation | remediation | merge | deploy | skill_created",
+    "session_id": "Devin session ID",
+    "user_id": "Engineer who initiated the task",
+    "task_description": "Natural language description of the task",
+    "skill_used": "Name of the OpenClaw skill executed",
+    "spoke_used": "cloud | cli | api | review",
+    "artifacts": {
+      "spec_path": "Path to SDD spec document",
+      "test_plan_path": "Path to TDD test plan",
+      "pr_url": "GitHub/GitLab PR URL",
+      "coverage_report_path": "Path to coverage report",
+      "review_url": "Devin Review URL"
+    },
+    "sdlc_checklist": {
+      "spec_exists": true,
+      "tests_exist": true,
+      "tests_passing": true,
+      "coverage_met": true,
+      "review_complete": true,
+      "security_scan_clean": true,
+      "guardrails_clean": true
+    },
+    "violations": [],
+    "duration_seconds": 0,
+    "outcome": "success | failure | partial",
+    "notes": "Any additional context"
+  }
+}

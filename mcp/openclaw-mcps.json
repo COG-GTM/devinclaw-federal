@@ -1,0 +1,43 @@
+{
+  "mcpServers": {
+    "deepwiki": {
+      "transport": "STDIO",
+      "command": "npx",
+      "args": ["-y", "@deepwiki/mcp-server"],
+      "env_variables": {
+        "DEEPWIKI_API_KEY": "${DEEPWIKI_API_KEY}"
+      },
+      "description": "Codebase intelligence — index and query legacy codebases for context"
+    },
+    "github": {
+      "transport": "STDIO",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env_variables": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "description": "GitHub repository access — PRs, issues, code search"
+    },
+    "jira": {
+      "transport": "HTTP",
+      "url": "${JIRA_MCP_URL}",
+      "auth_method": "auth_header",
+      "headers": {
+        "Authorization": "Bearer ${JIRA_API_TOKEN}"
+      },
+      "description": "Jira project management — pull tickets, create issues, track work"
+    },
+    "slack": {
+      "transport": "HTTP",
+      "url": "${SLACK_MCP_URL}",
+      "auth_method": "oauth",
+      "description": "Slack communication — receive commands, send notifications"
+    },
+    "postgres": {
+      "transport": "STDIO",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "${DATABASE_URL}"],
+      "description": "PostgreSQL database access — schema analysis, query execution"
+    }
+  }
+}

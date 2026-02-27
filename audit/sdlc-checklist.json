@@ -1,0 +1,76 @@
+{
+  "version": "1.0",
+  "description": "SDLC completion checklist — validated by OpenClaw after every task",
+  "checklist": [
+    {
+      "id": "SDLC-001",
+      "phase": "specification",
+      "requirement": "SDD spec document exists",
+      "validation": "Check for spec.md or design.md in PR or task artifacts",
+      "required": true
+    },
+    {
+      "id": "SDLC-002",
+      "phase": "testing",
+      "requirement": "TDD test plan exists",
+      "validation": "Check for test-plan.md or test files in PR",
+      "required": true
+    },
+    {
+      "id": "SDLC-003",
+      "phase": "testing",
+      "requirement": "All tests passing",
+      "validation": "CI pipeline status is green",
+      "required": true
+    },
+    {
+      "id": "SDLC-004",
+      "phase": "testing",
+      "requirement": "Coverage meets minimum thresholds",
+      "validation": "Coverage report shows all categories above minimum",
+      "required": true
+    },
+    {
+      "id": "SDLC-005",
+      "phase": "review",
+      "requirement": "Devin Review completed",
+      "validation": "Devin Review status is 'reviewed' on PR",
+      "required": true
+    },
+    {
+      "id": "SDLC-006",
+      "phase": "review",
+      "requirement": "No unresolved CRITICAL bugs from Devin Review",
+      "validation": "Bug catcher shows 0 critical severity findings",
+      "required": true
+    },
+    {
+      "id": "SDLC-007",
+      "phase": "security",
+      "requirement": "Security scan completed",
+      "validation": "STIG/NIST compliance scan ran with 0 CAT I findings",
+      "required": true
+    },
+    {
+      "id": "SDLC-008",
+      "phase": "governance",
+      "requirement": "Guardrails: zero CRITICAL/HIGH violations",
+      "validation": "Guardrail auditor shows 0 CRITICAL and 0 HIGH for session",
+      "required": true
+    },
+    {
+      "id": "SDLC-009",
+      "phase": "knowledge",
+      "requirement": "Knowledge base updated",
+      "validation": "Session analysis completed via Advanced Devin",
+      "required": false
+    },
+    {
+      "id": "SDLC-010",
+      "phase": "documentation",
+      "requirement": "PR description complete",
+      "validation": "PR has migration summary, test results, known differences",
+      "required": true
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "mcpServers": {
+    "deepwiki": {
+      "transport": "STDIO",
+      "command": "npx",
+      "args": ["-y", "@deepwiki/mcp-server"],
+      "env_variables": {
+        "DEEPWIKI_API_KEY": "${DEEPWIKI_API_KEY}"
+      },
+      "description": "Codebase intelligence for context during implementation"
+    },
+    "github": {
+      "transport": "STDIO",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env_variables": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "description": "Create PRs, manage branches, push code"
+    },
+    "sentry": {
+      "transport": "HTTP",
+      "url": "${SENTRY_MCP_URL}",
+      "auth_method": "auth_header",
+      "headers": {
+        "Authorization": "Bearer ${SENTRY_API_TOKEN}"
+      },
+      "description": "Error tracking — investigate production errors, auto-triage"
+    },
+    "datadog": {
+      "transport": "HTTP",
+      "url": "${DATADOG_MCP_URL}",
+      "auth_method": "auth_header",
+      "headers": {
+        "DD-API-KEY": "${DATADOG_API_KEY}",
+        "DD-APPLICATION-KEY": "${DATADOG_APP_KEY}"
+      },
+      "description": "Log analysis and monitoring — investigate alerts, query metrics"
+    },
+    "sonarqube": {
+      "transport": "HTTP",
+      "url": "${SONARQUBE_MCP_URL}",
+      "auth_method": "auth_header",
+      "headers": {
+        "Authorization": "Bearer ${SONARQUBE_TOKEN}"
+      },
+      "description": "Code quality analysis — security findings, code smells, coverage"
+    },
+    "postgres": {
+      "transport": "STDIO",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "${DATABASE_URL}"],
+      "description": "Database access for schema analysis and migration validation"
+    }
+  }
+}

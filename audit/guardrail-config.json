@@ -1,0 +1,89 @@
+{
+  "version": "1.0",
+  "guardrails": [
+    {
+      "id": "GR-SEC-001",
+      "name": "no-hardcoded-credentials",
+      "severity": "CRITICAL",
+      "description": "No API keys, passwords, tokens, or certificates in source code",
+      "pattern": "Detects strings matching credential patterns in code files",
+      "action": "block_merge"
+    },
+    {
+      "id": "GR-SEC-002",
+      "name": "no-sensitive-data-exposure",
+      "severity": "CRITICAL",
+      "description": "No PII, SSN, or classified data in code or comments",
+      "action": "block_merge"
+    },
+    {
+      "id": "GR-SEC-003",
+      "name": "tls-minimum-version",
+      "severity": "HIGH",
+      "description": "All network connections must use TLS 1.2 or higher",
+      "action": "alert"
+    },
+    {
+      "id": "GR-SEC-004",
+      "name": "fips-approved-crypto",
+      "severity": "HIGH",
+      "description": "Only FIPS 140-2 approved cryptographic algorithms",
+      "action": "alert"
+    },
+    {
+      "id": "GR-PROC-001",
+      "name": "spec-required",
+      "severity": "HIGH",
+      "description": "SDD specification document must exist before implementation",
+      "action": "alert"
+    },
+    {
+      "id": "GR-PROC-002",
+      "name": "tests-required",
+      "severity": "HIGH",
+      "description": "TDD test plan and tests must exist before code merges",
+      "action": "alert"
+    },
+    {
+      "id": "GR-PROC-003",
+      "name": "review-required",
+      "severity": "HIGH",
+      "description": "Devin Review must complete on every PR before merge",
+      "action": "block_merge"
+    },
+    {
+      "id": "GR-PROC-004",
+      "name": "coverage-minimum",
+      "severity": "MEDIUM",
+      "description": "Branch coverage must meet category thresholds",
+      "action": "alert"
+    },
+    {
+      "id": "GR-PROC-005",
+      "name": "pr-description-required",
+      "severity": "LOW",
+      "description": "PR must include description with migration summary and test results",
+      "action": "warn"
+    },
+    {
+      "id": "GR-ACCESS-001",
+      "name": "no-production-access",
+      "severity": "CRITICAL",
+      "description": "Devin sessions must not access production systems directly",
+      "action": "block_session"
+    },
+    {
+      "id": "GR-ACCESS-002",
+      "name": "approved-repos-only",
+      "severity": "HIGH",
+      "description": "Sessions can only access pre-approved repositories",
+      "action": "block_session"
+    }
+  ],
+  "enforcement": {
+    "mode": "enforce",
+    "polling_interval_seconds": 300,
+    "alert_channels": ["slack", "teams"],
+    "violation_log_path": "audit/violations/"
+  }
+}

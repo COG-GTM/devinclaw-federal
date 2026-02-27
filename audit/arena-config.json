@@ -1,0 +1,123 @@
+{
+  "version": "1.0.0",
+  "description": "Risk classification and arena execution policy per skill. Determines whether tasks run as single-session or multi-session (arena) verification.",
+  "divergence_threshold": 0.35,
+  "confidence_boost_arena": 0.15,
+  "max_arena_sessions": 3,
+  "skills": {
+    "legacy-analysis": {
+      "risk_level": "high",
+      "default_mode": "arena-run",
+      "arena_sessions": 2,
+      "rationale": "Incorrect modernization assessment leads to flawed migration roadmaps. Multi-session verification ensures architecture and dependency analysis is consistent across independent analyses.",
+      "override_requires_justification": true
+    },
+    "plsql-migration": {
+      "risk_level": "high",
+      "default_mode": "arena-run",
+      "arena_sessions": 2,
+      "rationale": "Oracle-to-PostgreSQL migration involves subtle semantic differences (NULL handling, date behavior, transaction boundaries) that benefit from independent verification of conversion correctness.",
+      "override_requires_justification": true
+    },
+    "cobol-conversion": {
+      "risk_level": "high",
+      "default_mode": "arena-run",
+      "arena_sessions": 2,
+      "rationale": "COBOL numeric precision, packed decimal handling, and implicit fall-through control flow are common sources of conversion errors. Independent sessions catch different edge cases.",
+      "override_requires_justification": true
+    },
+    "db-rationalization": {
+      "risk_level": "critical",
+      "default_mode": "arena-run",
+      "arena_sessions": 3,
+      "rationale": "Database rationalization across 3,000 instances is highest-risk modernization activity. Incorrect consolidation recommendations can cause data loss, referential integrity violations, and cross-LOB disruptions. Triple verification required.",
+      "override_requires_justification": true,
+      "override_minimum_mode": "arena-run"
+    },
+    "security-scan": {
+      "risk_level": "critical",
+      "default_mode": "arena-run",
+      "arena_sessions": 3,
+      "rationale": "Missed security findings can block ATO renewals and expose critical national infrastructure. False negatives in STIG/NIST compliance scanning are unacceptable. Triple verification ensures comprehensive coverage.",
+      "override_requires_justification": true,
+      "override_minimum_mode": "arena-run"
+    },
+    "test-generation": {
+      "risk_level": "medium",
+      "default_mode": "single-run",
+      "arena_sessions": 1,
+      "rationale": "Test generation output is validated by execution — tests either pass or fail. The built-in verification (running the tests) serves as the primary quality gate.",
+      "override_requires_justification": false
+    },
+    "feature-dev": {
+      "risk_level": "medium",
+      "default_mode": "single-run",
+      "arena_sessions": 1,
+      "rationale": "Feature development follows the SDD→TDD→Build→Review pipeline with multiple verification checkpoints. Arena verification is available for safety-critical features.",
+      "override_requires_justification": false
+    },
+    "pr-review": {
+      "risk_level": "low",
+      "default_mode": "single-run",
+      "arena_sessions": 1,
+      "rationale": "PR review is itself a verification step. The reviewed code has already been through the build pipeline. Additional arena sessions add cost without proportional risk reduction.",
+      "override_requires_justification": false
+    },
+    "incident-response": {
+      "risk_level": "critical",
+      "default_mode": "arena-run",
+      "arena_sessions": 3,
+      "rationale": "Incorrect root cause analysis leads to wrong fixes deployed to production, potentially worsening the incident. Multiple independent investigations increase the probability of finding the true root cause.",
+      "override_requires_justification": true,
+      "override_minimum_mode": "arena-run"
+    },
+    "parallel-migration": {
+      "risk_level": "medium",
+      "default_mode": "single-run",
+      "arena_sessions": 1,
+      "rationale": "Each parallel session is individually verified. The pilot batch mechanism serves as the arena equivalent — the first 10 sessions validate the transformation rules before scaling.",
+      "override_requires_justification": false
+    },
+    "api-modernization": {
+      "risk_level": "high",
+      "default_mode": "arena-run",
+      "arena_sessions": 2,
+      "rationale": "API contract changes affect all downstream consumers. Independent verification sessions catch contract inconsistencies and backward compatibility breaks.",
+      "override_requires_justification": true
+    },
+    "containerization": {
+      "risk_level": "medium",
+      "default_mode": "single-run",
+      "arena_sessions": 1,
+      "rationale": "Containerization output is validated by build, scan, and deploy verification. The Trivy scan and container health check serve as deterministic quality gates.",
+      "override_requires_justification": false
+    },
+    "sdlc-validator": {
+      "risk_level": "low",
+      "default_mode": "single-run",
+      "arena_sessions": 1,
+      "rationale": "SDLC validation is deterministic — gates pass or fail based on artifact presence and test results. No subjective analysis that benefits from multiple perspectives.",
+      "override_requires_justification": false
+    },
+    "guardrail-auditor": {
+      "risk_level": "low",
+      "default_mode": "single-run",
+      "arena_sessions": 1,
+      "rationale": "Guardrail auditing polls a deterministic API and classifies violations against defined rules. No ambiguity that benefits from arena verification.",
+      "override_requires_justification": false
+    },
+    "skill-creator": {
+      "risk_level": "low",
+      "default_mode": "single-run",
+      "arena_sessions": 1,
+      "rationale": "Skill creation output is validated by the skills parser and validator. The validation tooling provides deterministic quality gates.",
+      "override_requires_justification": false
+    }
+  },
+  "safety_critical_override": {
+    "description": "For systems under DO-178C (DAL A through DAL C), all skills default to arena-run with N=3 regardless of their configured risk level.",
+    "applies_to": "DO-178C DAL A, DAL B, DAL C",
+    "forced_mode": "arena-run",
+    "forced_sessions": 3
+  }
+}

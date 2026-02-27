@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DevinClaw Verification Record",
+  "description": "Schema for verification records produced by the divergence detection system. Records are stored in audit/verification-logs/ for compliance retention.",
+  "type": "object",
+  "required": ["verification_id", "timestamp", "mode", "sessions", "resolution"],
+  "properties": {
+    "verification_id": {
+      "type": "string",
+      "pattern": "^ver_[a-f0-9-]+$",
+      "description": "Unique verification record identifier"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when verification completed"
+    },
+    "work_order_id": {
+      "type": "string",
+      "description": "Parent work order linking this verification to the original task"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["single-run", "arena-run"],
+      "description": "Execution mode used for this verification"
+    },
+    "sessions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["session_id", "artifacts"],
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "Devin session identifier"
+          },
+          "playbook_variant": {
+            "type": "string",
+            "description": "Which playbook variant this session used (for arena differentiation)"
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["filename", "sha256", "stage"],
+              "properties": {
+                "filename": { "type": "string" },
+                "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+                "stage": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "divergence": {
+      "type": "object",
+      "description": "Divergence analysis results (present only for arena-run)",
+      "properties": {
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Overall divergence score. 0 = perfect agreement, 1 = complete disagreement"
+        },
+        "entity_overlap": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Ratio of entities identified by all sessions vs. union of all entities"
+        },
+        "invariant_agreement": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Ratio of key invariants where all sessions agree"
+        },
+        "conflicting_claims": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Ratio of findings where sessions directly contradict each other"
+        },
+        "confidence_alignment": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Agreement on severity/confidence ratings across sessions"
+        }
+      }
+    },
+    "resolution": {
+      "type": "string",
+      "enum": ["auto-merged", "targeted-verification", "human-escalated"],
+      "description": "How the verification was resolved"
+    },
+    "human_reviewer": {
+      "type": ["string", "null"],
+      "description": "Identifier of human reviewer if escalated, null otherwise"
+    },
+    "audit_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hash of this record for tamper detection"
+    }
+  }
+}

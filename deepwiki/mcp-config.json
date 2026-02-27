@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "deepwiki": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/deepwiki-mcp"],
+      "env": {
+        "DEEPWIKI_API_KEY": "${DEEPWIKI_API_KEY}",
+        "DEEPWIKI_BASE_URL": "https://deepwiki.devin.ai"
+      },
+      "transport": "stdio",
+      "description": "DeepWiki MCP server for codebase intelligence and knowledge queries",
+      "capabilities": [
+        "index_repository",
+        "query_codebase",
+        "get_architecture",
+        "search_patterns",
+        "get_dependencies",
+        "analyze_complexity"
+      ]
+    }
+  }
+}

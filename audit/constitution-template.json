@@ -1,0 +1,250 @@
+{
+  "version": "1.0.0",
+  "description": "SDLC Constitution — deterministic stage boundary definition for all DevinClaw work orders. Every task follows this sequence with defined inputs, outputs, and required artifacts at each stage gate.",
+  "stages": [
+    {
+      "stage_id": "spec",
+      "stage_name": "Specification",
+      "order": 1,
+      "description": "Define what must be built, migrated, or analyzed. Produces the SDD (Spec-Driven Design) document that governs all subsequent work.",
+      "required_inputs": [
+        "task_description",
+        "repository_url_or_path",
+        "deepwiki_index_confirmation"
+      ],
+      "required_outputs": [
+        "spec.md",
+        "spec.json"
+      ],
+      "gate_criteria": {
+        "spec_reviewed": "SDD specification must be reviewed by Advanced Devin or human reviewer before proceeding",
+        "scope_bounded": "Specification must define explicit scope boundaries — what is in scope and what is excluded",
+        "acceptance_criteria_defined": "At least 3 measurable acceptance criteria must be specified"
+      },
+      "artifacts": {
+        "spec.md": "Human-readable specification document following sdd/templates/spec.md format",
+        "spec.json": "Machine-consumable specification contract with scope, acceptance criteria, and dependency declarations"
+      }
+    },
+    {
+      "stage_id": "design",
+      "stage_name": "Design",
+      "order": 2,
+      "description": "Translate the specification into a technical design. Define architecture, data models, interfaces, and component boundaries.",
+      "required_inputs": [
+        "spec.json",
+        "deepwiki_codebase_context"
+      ],
+      "required_outputs": [
+        "design.md",
+        "design.json"
+      ],
+      "gate_criteria": {
+        "design_reviewed": "Technical design must be reviewed for architectural consistency and security compliance",
+        "interfaces_defined": "All external interfaces and API contracts must be explicitly specified",
+        "security_considerations": "Security implications documented — authentication, authorization, data protection, STIG applicability"
+      },
+      "artifacts": {
+        "design.md": "Human-readable design document following sdd/templates/design.md format",
+        "design.json": "Machine-consumable design contract with component inventory, interface definitions, and data model schemas"
+      }
+    },
+    {
+      "stage_id": "test",
+      "stage_name": "Test Definition",
+      "order": 3,
+      "description": "Write tests before implementation (TDD). Test stubs define expected behavior and serve as the acceptance criteria enforcement mechanism.",
+      "required_inputs": [
+        "spec.json",
+        "design.json"
+      ],
+      "required_outputs": [
+        "test-plan.md",
+        "test-plan.json",
+        "test_stubs"
+      ],
+      "gate_criteria": {
+        "tests_compile": "All test stubs must compile/parse without errors",
+        "tests_fail_correctly": "Test stubs must fail with assertion errors (not compilation errors) — proving they test the right thing",
+        "coverage_plan": "Test plan must project >= 80% branch coverage for new/modified code",
+        "security_tests_included": "Test plan must include security-specific tests for applicable STIG controls"
+      },
+      "artifacts": {
+        "test-plan.md": "Human-readable test strategy following tdd/templates/test-plan.md format",
+        "test-plan.json": "Machine-consumable test matrix with test IDs, categories, and expected outcomes",
+        "test_stubs": "Executable test files that compile but fail (TDD red phase)"
+      }
+    },
+    {
+      "stage_id": "build",
+      "stage_name": "Build",
+      "order": 4,
+      "description": "Implement the specification to make all tests pass. This is where Devin sessions execute — potentially 1 to 100+ parallel sessions for large migrations.",
+      "required_inputs": [
+        "spec.json",
+        "design.json",
+        "test-plan.json",
+        "test_stubs"
+      ],
+      "required_outputs": [
+        "implementation_code",
+        "build-report.md",
+        "build-report.json"
+      ],
+      "gate_criteria": {
+        "all_tests_pass": "Every test defined in the test plan must pass",
+        "lint_clean": "Zero linter errors on all new/modified code",
+        "typecheck_clean": "Zero type errors (for typed languages)",
+        "coverage_met": "Branch coverage >= 80% for new/modified code",
+        "no_secrets": "Secret scanner reports zero findings in new/modified code",
+        "dependency_scan_clean": "No Critical or High CVEs in newly added dependencies"
+      },
+      "artifacts": {
+        "implementation_code": "Source code changes implementing the specification",
+        "build-report.md": "Human-readable build summary with session IDs, test results, and coverage metrics",
+        "build-report.json": "Machine-consumable build results for SDLC validator consumption"
+      }
+    },
+    {
+      "stage_id": "review",
+      "stage_name": "Review",
+      "order": 5,
+      "description": "Independent review of the implementation by Devin Review and/or human reviewers. Catches bugs, security issues, and architectural problems that testing alone cannot surface.",
+      "required_inputs": [
+        "implementation_code",
+        "spec.json",
+        "build-report.json"
+      ],
+      "required_outputs": [
+        "review-report.md",
+        "review-report.json"
+      ],
+      "gate_criteria": {
+        "no_critical_findings": "Zero unresolved Critical findings",
+        "no_high_findings": "Zero unresolved High findings (or documented accepted risk with justification)",
+        "stig_scan_clean": "STIG compliance scan reports zero CAT I findings on changed code",
+        "review_complete": "All review findings in resolved or accepted_risk status"
+      },
+      "artifacts": {
+        "review-report.md": "Human-readable review findings with severity, location, and remediation guidance",
+        "review-report.json": "Machine-consumable review results for SDLC validator consumption"
+      }
+    },
+    {
+      "stage_id": "evidence",
+      "stage_name": "Evidence Pack",
+      "order": 6,
+      "description": "Assemble the complete evidence bundle for auditability, compliance, and ATO package support. Every artifact from prior stages is hashed and cataloged.",
+      "required_inputs": [
+        "spec.json",
+        "design.json",
+        "test-plan.json",
+        "build-report.json",
+        "review-report.json"
+      ],
+      "required_outputs": [
+        "evidence-pack.json"
+      ],
+      "gate_criteria": {
+        "all_artifacts_present": "Every required output from every prior stage must be present",
+        "all_hashes_valid": "SHA-256 hashes of all artifacts must match their computed values",
+        "no_retroactive_modifications": "Artifact timestamps must follow stage order — no evidence of backdating",
+        "verification_complete": "Self-verification loop must have completed with all gates passing"
+      },
+      "artifacts": {
+        "evidence-pack.json": "Complete evidence bundle per the Evidence Pack schema defined in each skill"
+      }
+    },
+    {
+      "stage_id": "deliver",
+      "stage_name": "Deliver",
+      "order": 7,
+      "description": "Final delivery: PR creation, knowledge base update, and handoff. The task is complete when the PR is created, evidence pack is stored, and DeepWiki is updated with learnings.",
+      "required_inputs": [
+        "implementation_code",
+        "evidence-pack.json"
+      ],
+      "required_outputs": [
+        "pull_request",
+        "knowledge_update",
+        "delivery-report.md"
+      ],
+      "gate_criteria": {
+        "pr_created": "Pull request created with all implementation code, linked to evidence pack",
+        "knowledge_updated": "DeepWiki knowledge base updated with learnings from this task",
+        "sdlc_validated": "SDLC validator confirms all stages completed with passing gates"
+      },
+      "artifacts": {
+        "pull_request": "GitHub PR with implementation, test changes, and documentation",
+        "knowledge_update": "DeepWiki knowledge entry with patterns, decisions, and lessons learned",
+        "delivery-report.md": "Final summary for human stakeholders"
+      }
+    }
+  ],
+  "hard_gates": [
+    {
+      "gate_id": "HG-001",
+      "name": "Tests Pass",
+      "stage": "build",
+      "enforcement": "All unit, integration, and security tests must pass"
+    },
+    {
+      "gate_id": "HG-002",
+      "name": "STIG Scan Clean",
+      "stage": "review",
+      "enforcement": "Zero CAT I STIG findings on changed code"
+    },
+    {
+      "gate_id": "HG-003",
+      "name": "Lint/Format Pass",
+      "stage": "build",
+      "enforcement": "Zero linter and formatter errors"
+    },
+    {
+      "gate_id": "HG-004",
+      "name": "Coverage Threshold",
+      "stage": "build",
+      "enforcement": "Branch coverage >= 80% for new/modified code"
+    },
+    {
+      "gate_id": "HG-005",
+      "name": "No Secrets",
+      "stage": "build",
+      "enforcement": "Secret scanner reports zero findings"
+    },
+    {
+      "gate_id": "HG-006",
+      "name": "Dependency Scan",
+      "stage": "build",
+      "enforcement": "No Critical or High CVEs in dependencies"
+    },
+    {
+      "gate_id": "HG-007",
+      "name": "Signed Commits",
+      "stage": "deliver",
+      "enforcement": "All commits are GPG-signed"
+    },
+    {
+      "gate_id": "HG-008",
+      "name": "Audit Trail Complete",
+      "stage": "evidence",
+      "enforcement": "Session audit log contains all required events"
+    },
+    {
+      "gate_id": "HG-009",
+      "name": "License Compliance",
+      "stage": "build",
+      "enforcement": "All dependencies use approved licenses"
+    },
+    {
+      "gate_id": "HG-010",
+      "name": "NIST Controls Met",
+      "stage": "review",
+      "enforcement": "All applicable NIST 800-53 controls validated"
+    }
+  ],
+  "retention": {
+    "policy": "Contract duration + 3 years per FAR 4.703",
+    "applies_to": "All stage artifacts, evidence packs, and audit logs"
+  }
+}
