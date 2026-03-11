@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 .env
 *.egg
+node_modules/
+.next/
+out/
+next-env.d.ts
