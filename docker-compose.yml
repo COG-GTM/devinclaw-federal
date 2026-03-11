@@ -1,0 +1,95 @@
+version: "3.9"
+
+services:
+  devinclaw-api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: devinclaw-api
+    ports:
+      - "8420:8420"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://devinclaw:devinclaw@postgres:5432/devinclaw
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
+      - DEVIN_API_KEY=${DEVIN_API_KEY:-}
+      - DEVIN_API_BASE_URL=${DEVIN_API_BASE_URL:-https://api.devin.ai/v1}
+      - SKILLS_DIR=/app/skills
+      - AUDIT_DIR=/app/audit
+      - KNOWLEDGE_DIR=/app/knowledge
+    volumes:
+      - ./skills:/app/skills:ro
+      - ./audit:/app/audit
+      - ./knowledge:/app/knowledge
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - devinclaw-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8420/health'); r.raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  devinclaw-dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dashboard
+    container_name: devinclaw-dashboard
+    ports:
+      - "3000:80"
+    depends_on:
+      - devinclaw-api
+    networks:
+      - devinclaw-net
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: devinclaw-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=devinclaw
+      - POSTGRES_PASSWORD=devinclaw
+      - POSTGRES_DB=devinclaw
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - devinclaw-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devinclaw"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: devinclaw-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - devinclaw-net
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  devinclaw-net:
+    driver: bridge
