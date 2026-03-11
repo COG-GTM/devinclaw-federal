@@ -47,7 +47,16 @@ class ZeroTrustMiddleware(BaseHTTPMiddleware):
         if path.startswith("/ws/"):
             return await call_next(request)
 
-        # For non-exempt paths, add timing and security headers
+        # For non-exempt paths, verify JWT and set request.state for downstream middleware
+        claims = verify_session_token(request)
+        if claims:
+            request.state.jwt_id = claims.get("jti", "")
+            request.state.user_claims = claims
+        else:
+            # No valid token — let downstream auth handlers return 401
+            request.state.jwt_id = None
+            request.state.user_claims = None
+
         start_time = time.time()
         response = await call_next(request)
         elapsed = time.time() - start_time
