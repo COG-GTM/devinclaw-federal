@@ -6,11 +6,9 @@ NIST AC-7: Lock after 5 failed attempts, 15-minute duration.
 
 from __future__ import annotations
 
-from passlib.context import CryptContext
+import bcrypt
 
 from src.config import settings
-
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 
 
 class PasswordPolicyError(Exception):
@@ -50,9 +48,14 @@ def validate_password_policy(password: str) -> None:
 
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt with 12 rounds."""
-    return _pwd_context.hash(password)
+    password_bytes = password.encode("utf-8")
+    salt = bcrypt.gensalt(rounds=12)
+    return bcrypt.hashpw(password_bytes, salt).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its bcrypt hash."""
-    return _pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"),
+        hashed_password.encode("utf-8"),
+    )

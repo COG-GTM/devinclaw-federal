@@ -30,9 +30,7 @@ CREDENTIAL_PATTERNS: list[re.Pattern[str]] = [
 PII_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"""\b\d{3}-\d{2}-\d{4}\b"""),  # SSN
     re.compile(r"""\b\d{9}\b"""),  # SSN without dashes (context-dependent)
-    re.compile(
-        r"""\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"""
-    ),  # Email (flagged in code comments)
+    re.compile(r"""\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"""),  # Email (flagged in code comments)
 ]
 
 # TLS minimum version patterns (GR-SEC-003)

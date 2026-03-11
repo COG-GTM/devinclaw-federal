@@ -26,6 +26,7 @@ def get_memory_manager():  # noqa: ANN201
     global _memory_manager  # noqa: PLW0603
     if _memory_manager is None:
         from src.memory.memory_manager import MemoryManager
+
         _memory_manager = MemoryManager()
     return _memory_manager
 

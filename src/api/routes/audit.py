@@ -25,6 +25,7 @@ router = APIRouter(prefix="/audit", tags=["audit"])
 
 def _get_audit_writer():  # noqa: ANN201
     from src.core.audit_writer import AuditWriter
+
     return AuditWriter(audit_dir=settings.audit_dir)
 
 
@@ -115,12 +116,14 @@ async def list_evidence_packs(
             try:
                 with open(filepath) as f:
                     data = json.load(f)
-                packs.append({
-                    "filename": filename,
-                    "session_id": data.get("session_id", ""),
-                    "skill_id": data.get("skill_id", ""),
-                    "timestamp": data.get("timestamp", ""),
-                })
+                packs.append(
+                    {
+                        "filename": filename,
+                        "session_id": data.get("session_id", ""),
+                        "skill_id": data.get("skill_id", ""),
+                        "timestamp": data.get("timestamp", ""),
+                    }
+                )
             except (json.JSONDecodeError, OSError):
                 continue
 

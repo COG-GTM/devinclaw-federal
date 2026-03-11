@@ -71,11 +71,13 @@ async def terminal_websocket(websocket: WebSocket, session_id: str) -> None:
     _connections[session_id].append(websocket)
 
     # Send connection confirmation
-    await websocket.send_json({
-        "type": "connected",
-        "session_id": session_id,
-        "user_id": user_id,
-    })
+    await websocket.send_json(
+        {
+            "type": "connected",
+            "session_id": session_id,
+            "user_id": user_id,
+        }
+    )
 
     try:
         while True:
@@ -95,11 +97,13 @@ async def terminal_websocket(websocket: WebSocket, session_id: str) -> None:
                 logger.debug("WS input [%s]: %s", session_id, input_text[:50])
 
                 # In production, this would forward to the CLI bridge PTY
-                await websocket.send_json({
-                    "type": "output",
-                    "content": f"[echo] {input_text}\n",
-                    "session_id": session_id,
-                })
+                await websocket.send_json(
+                    {
+                        "type": "output",
+                        "content": f"[echo] {input_text}\n",
+                        "session_id": session_id,
+                    }
+                )
 
             elif msg_type == "heartbeat":
                 await websocket.send_json({"type": "heartbeat_ack"})

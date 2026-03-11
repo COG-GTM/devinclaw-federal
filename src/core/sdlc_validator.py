@@ -210,9 +210,7 @@ class SDLCValidator:
             requirement="Security scan completed",
             passed=passed,
             detail=(
-                f"CAT I findings: {ctx.security_scan_cat1_findings}"
-                if not passed
-                else "Security scan clean — 0 CAT I"
+                f"CAT I findings: {ctx.security_scan_cat1_findings}" if not passed else "Security scan clean — 0 CAT I"
             ),
         )
 

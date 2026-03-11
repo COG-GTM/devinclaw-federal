@@ -131,7 +131,9 @@ async def login(request: Request, body: LoginRequest) -> TokenResponse:
             user["locked_until"] = (
                 datetime.now(UTC) + timedelta(minutes=settings.lockout_duration_minutes)
             ).isoformat()
-            logger.warning("Account locked for user %s after %d failed attempts", body.email, user["failed_login_attempts"])
+            logger.warning(
+                "Account locked for user %s after %d failed attempts", body.email, user["failed_login_attempts"]
+            )
 
         raise HTTPException(status_code=401, detail="Invalid credentials")
 

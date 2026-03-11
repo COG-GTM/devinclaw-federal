@@ -43,19 +43,21 @@ async def list_skills(request: Request) -> dict[str, Any]:
     skills = []
     if skill_router_instance:
         for skill in skill_router_instance.list_skills():
-            skills.append({
-                "skill_id": skill.skill_id,
-                "name": skill.name,
-                "description": skill.description,
-                "triggers": skill.triggers,
-                "risk_level": skill.risk_level,
-                "default_arena_mode": skill.default_arena_mode,
-                "arena_sessions": skill.arena_sessions,
-                "mcp_required": skill.mcp_required,
-                "spokes": skill.spokes,
-                "hard_gates": skill.hard_gates,
-                "source": "built-in",
-            })
+            skills.append(
+                {
+                    "skill_id": skill.skill_id,
+                    "name": skill.name,
+                    "description": skill.description,
+                    "triggers": skill.triggers,
+                    "risk_level": skill.risk_level,
+                    "default_arena_mode": skill.default_arena_mode,
+                    "arena_sessions": skill.arena_sessions,
+                    "mcp_required": skill.mcp_required,
+                    "spokes": skill.spokes,
+                    "hard_gates": skill.hard_gates,
+                    "source": "built-in",
+                }
+            )
 
     # Add custom skills
     for custom in _custom_skills.values():

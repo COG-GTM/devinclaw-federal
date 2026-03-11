@@ -221,9 +221,7 @@ class Orchestrator:
 
             # Step 9: Arena divergence check (if arena mode)
             if mode == "arena-run" and len(completed_records) > 1:
-                outputs = [
-                    {"findings": r.artifacts, "metadata": r.metadata} for r in completed_records
-                ]
+                outputs = [{"findings": r.artifacts, "metadata": r.metadata} for r in completed_records]
                 divergence = self.arena_executor.compute_divergence(outputs)
                 if divergence.resolution == "human-escalated":
                     result.status = "escalated"

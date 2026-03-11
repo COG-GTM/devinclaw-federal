@@ -22,7 +22,11 @@ NIST_CONTROL_FAMILIES = {
     "AU": {"name": "Audit and Accountability", "controls": ["AU-2", "AU-3", "AU-6", "AU-12"], "implemented": 4},
     "IA": {"name": "Identification and Authentication", "controls": ["IA-2", "IA-5", "IA-8"], "implemented": 3},
     "SC": {"name": "System and Communications Protection", "controls": ["SC-8", "SC-13", "SC-28"], "implemented": 3},
-    "SI": {"name": "System and Information Integrity", "controls": ["SI-2", "SI-4", "SI-10", "SI-11"], "implemented": 4},
+    "SI": {
+        "name": "System and Information Integrity",
+        "controls": ["SI-2", "SI-4", "SI-10", "SI-11"],
+        "implemented": 4,
+    },
 }
 
 # STIG categories
@@ -121,14 +125,34 @@ async def stig_findings(request: Request) -> dict[str, Any]:
             for cat_id, cat_data in STIG_CATEGORIES.items()
         },
         "key_controls": [
-            {"v_number": "V-220629", "title": "Password Policy", "status": "compliant", "detail": "14+ chars, bcrypt-12"},
+            {
+                "v_number": "V-220629",
+                "title": "Password Policy",
+                "status": "compliant",
+                "detail": "14+ chars, bcrypt-12",
+            },
             {"v_number": "V-220630", "title": "Session Timeout", "status": "compliant", "detail": "15-min inactivity"},
-            {"v_number": "V-220631", "title": "Input Validation", "status": "compliant", "detail": "Whitelist validation"},
-            {"v_number": "V-220632", "title": "Input Sanitization", "status": "compliant", "detail": "Parameterized queries"},
+            {
+                "v_number": "V-220631",
+                "title": "Input Validation",
+                "status": "compliant",
+                "detail": "Whitelist validation",
+            },
+            {
+                "v_number": "V-220632",
+                "title": "Input Sanitization",
+                "status": "compliant",
+                "detail": "Parameterized queries",
+            },
             {"v_number": "V-220633", "title": "Encryption at Rest", "status": "compliant", "detail": "AES-256"},
             {"v_number": "V-220634", "title": "Encryption in Transit", "status": "compliant", "detail": "TLS 1.2+"},
             {"v_number": "V-220635", "title": "Audit Logging", "status": "compliant", "detail": "JSON structured logs"},
-            {"v_number": "V-220641", "title": "Security Headers", "status": "compliant", "detail": "HSTS, X-Frame, CSP"},
+            {
+                "v_number": "V-220641",
+                "title": "Security Headers",
+                "status": "compliant",
+                "detail": "HSTS, X-Frame, CSP",
+            },
         ],
     }
 

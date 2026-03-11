@@ -26,11 +26,13 @@ class StreamBuffer:
 
     def append(self, content: str, stream: str = "stdout") -> None:
         """Add output to buffer."""
-        self.lines.append({
-            "timestamp": datetime.now(UTC).isoformat(),
-            "stream": stream,
-            "content": content,
-        })
+        self.lines.append(
+            {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "stream": stream,
+                "content": content,
+            }
+        )
         self.total_bytes += len(content)
 
     def get_audit_trail(self) -> list[dict[str, Any]]:
@@ -62,12 +64,15 @@ class CLIStreamManager:
 
         # Forward to WebSocket if broadcast function is set
         if self._ws_broadcast_fn:
-            await self._ws_broadcast_fn(session_id, {
-                "type": "output",
-                "stream": stream,
-                "content": content,
-                "session_id": session_id,
-            })
+            await self._ws_broadcast_fn(
+                session_id,
+                {
+                    "type": "output",
+                    "stream": stream,
+                    "content": content,
+                    "session_id": session_id,
+                },
+            )
 
     async def stream_from_bridge(
         self,
