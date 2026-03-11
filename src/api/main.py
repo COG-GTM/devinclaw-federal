@@ -10,8 +10,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.middleware.audit_log import AuditLogMiddleware
+from src.api.middleware.inactivity_timeout import InactivityTimeoutMiddleware
 from src.api.middleware.zero_trust import ZeroTrustMiddleware
-from src.api.routes import audit, auth, compliance, memory, schedule, sessions, skills, tasks, ws
+from src.api.routes import audit, auth, compliance, memory, schedule, sessions, skills, tasks, visibility, ws
 from src.config import settings
 from src.core.skill_router import SkillRouter
 
@@ -52,6 +53,7 @@ app = FastAPI(
 
 # --- Middleware (order matters: last added = first executed) ---
 app.add_middleware(AuditLogMiddleware)
+app.add_middleware(InactivityTimeoutMiddleware)
 app.add_middleware(ZeroTrustMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -70,6 +72,7 @@ app.include_router(schedule.router, prefix="/api/v1")
 app.include_router(memory.router, prefix="/api/v1")
 app.include_router(audit.router, prefix="/api/v1")
 app.include_router(compliance.router, prefix="/api/v1")
+app.include_router(visibility.router)
 app.include_router(ws.router)
 
 

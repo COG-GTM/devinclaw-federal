@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     divergence_threshold: float = 0.35
     max_arena_sessions: int = 3
 
+    # --- Session / Cost Limits (Section 4: Guardrail Engine) ---
+    max_concurrent_sessions_per_org: int = 50
+    max_concurrent_sessions_per_user: int = 10
+    max_session_duration_minutes: int = 240
+    max_monthly_cost_per_org: float = 50000.0
+    cost_per_session_minute: float = 0.50
+
     # --- CORS ---
     cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 

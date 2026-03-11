@@ -1,9 +1,12 @@
-"""Audit routes — searchable audit trail, export, and evidence packs.
+"""Audit routes — searchable audit trail, export, evidence packs, SBOM, OSCAL.
 
 GET /api/v1/audit                    — searchable audit trail
 GET /api/v1/audit/export             — export as JSON/CSV
 GET /api/v1/audit/evidence-packs     — list evidence packs
 GET /api/v1/audit/evidence-packs/{id} — download evidence pack
+GET /api/v1/audit/sbom               — CycloneDX SBOM (EO 14028)
+GET /api/v1/audit/oscal              — OSCAL SSP export
+GET /api/v1/audit/schemas            — unified schema registry
 """
 
 from __future__ import annotations
@@ -154,3 +157,33 @@ async def get_evidence_pack(request: Request, pack_id: str) -> dict[str, Any]:
 
     with open(filepath) as f:
         return json.load(f)
+
+
+@router.get("/sbom")
+async def get_sbom(request: Request) -> dict:
+    """Generate CycloneDX SBOM — required by EO 14028 Section 4(e)."""
+    get_current_user(request)
+
+    from src.core.sbom_generator import generate_sbom
+
+    return generate_sbom(project_dir=".")
+
+
+@router.get("/oscal")
+async def get_oscal(request: Request) -> dict:
+    """Export OSCAL System Security Plan for ATO packages."""
+    get_current_user(request)
+
+    from src.core.oscal_exporter import generate_ssp
+
+    return generate_ssp()
+
+
+@router.get("/schemas")
+async def get_schemas(request: Request) -> dict:
+    """Export unified schema registry — JSON Schema for all core types."""
+    get_current_user(request)
+
+    from src.core.schemas import export_json_schemas
+
+    return export_json_schemas()

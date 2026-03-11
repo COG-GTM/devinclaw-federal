@@ -17,6 +17,7 @@ Steps:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -30,6 +31,7 @@ from src.core.guardrail_enforcer import TaskContext as GuardrailContext
 from src.core.sdlc_validator import SDLCContext, SDLCValidator
 from src.core.session_manager import SessionManager, SessionStatus
 from src.core.skill_router import SkillRouter
+from src.core.spoke_executor import SpokeRequest, execute_with_fallback
 from src.core.spoke_selector import SpokeSelection, select_spoke
 from src.core.spoke_selector import TaskContext as SpokeContext
 from src.memory.memory_manager import MemoryManager
@@ -196,10 +198,9 @@ class Orchestrator:
 
             prompt = context_prefix + request.description
 
-            # Step 7: Launch session(s)
-            session_ids: list[str] = []
-            for _ in range(session_count):
-                record = await self.session_manager.launch_session(
+            # Step 7: Launch session(s) — truly parallel via asyncio.gather()
+            async def _launch_one() -> Any:
+                return await self.session_manager.launch_session(
                     task_id=task_id,
                     user_id=request.user_id,
                     org_id=request.org_id,
@@ -209,15 +210,54 @@ class Orchestrator:
                     repos=request.repos,
                     secrets=request.secrets,
                 )
-                session_ids.append(record.session_id)
+
+            launch_coros = [_launch_one() for _ in range(session_count)]
+            launched_records = await asyncio.gather(*launch_coros, return_exceptions=True)
+
+            session_ids: list[str] = []
+            for rec in launched_records:
+                if isinstance(rec, BaseException):
+                    logger.error("Session launch failed: %s", rec)
+                    # Attempt spoke fallback for failed launches
+                    try:
+                        spoke_req = SpokeRequest(
+                            task_id=task_id,
+                            prompt=prompt,
+                            skill_name=skill.name,
+                            user_id=request.user_id,
+                            org_id=request.org_id,
+                            repos=request.repos,
+                            secrets=request.secrets,
+                        )
+                        fb_session = await execute_with_fallback(
+                            primary=spoke_selection.primary,
+                            fallback=spoke_selection.fallback,
+                            request=spoke_req,
+                        )
+                        session_ids.append(fb_session.session_id)
+                    except Exception as fb_err:
+                        logger.error("Fallback also failed: %s", fb_err)
+                        result.errors.append(f"Session launch + fallback failed: {fb_err}")
+                else:
+                    session_ids.append(rec.session_id)
 
             result.session_ids = session_ids
 
-            # Step 8: Monitor sessions (poll until complete)
+            if not session_ids:
+                result.status = "failed"
+                result.errors.append("All session launches failed")
+                return result
+
+            # Step 8: Monitor sessions — parallel polling via asyncio.gather()
+            poll_coros = [self.session_manager.poll_until_complete(sid) for sid in session_ids]
+            poll_results = await asyncio.gather(*poll_coros, return_exceptions=True)
+
             completed_records = []
-            for sid in session_ids:
-                record = await self.session_manager.poll_until_complete(sid)
-                completed_records.append(record)
+            for pr in poll_results:
+                if isinstance(pr, BaseException):
+                    logger.error("Session poll failed: %s", pr)
+                else:
+                    completed_records.append(pr)
 
             # Step 9: Arena divergence check (if arena mode)
             if mode == "arena-run" and len(completed_records) > 1:

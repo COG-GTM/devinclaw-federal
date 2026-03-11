@@ -36,6 +36,9 @@ PRIORITY_ORDER: list[str] = [
     "guardrail-auditor",
 ]
 
+# Minimum confidence threshold — below this, the match is flagged as low-confidence
+MINIMUM_CONFIDENCE_THRESHOLD: float = 0.3
+
 # Simple stemming suffixes
 _STEM_SUFFIXES = ("ing", "tion", "ment", "ness", "ize", "ise", "ed", "ly", "er", "es", "s")
 
@@ -68,6 +71,7 @@ class SkillMatch:
     score: float
     matched_triggers: list[str] = field(default_factory=list)
     is_fallback: bool = False
+    low_confidence: bool = False
 
 
 def _stem(word: str) -> str:
@@ -183,7 +187,12 @@ class SkillRouter:
 
         if len(scored) == 1:
             skill, score, triggers = scored[0]
-            return SkillMatch(skill=skill, score=score, matched_triggers=triggers)
+            return SkillMatch(
+                skill=skill,
+                score=score,
+                matched_triggers=triggers,
+                low_confidence=score < MINIMUM_CONFIDENCE_THRESHOLD,
+            )
 
         # Multiple matches — use priority order
         top_score = scored[0][1]
@@ -192,11 +201,21 @@ class SkillRouter:
         for priority_name in PRIORITY_ORDER:
             for skill, score, triggers in candidates:
                 if skill.name == priority_name:
-                    return SkillMatch(skill=skill, score=score, matched_triggers=triggers)
+                    return SkillMatch(
+                        skill=skill,
+                        score=score,
+                        matched_triggers=triggers,
+                        low_confidence=score < MINIMUM_CONFIDENCE_THRESHOLD,
+                    )
 
         # If none in priority list, return highest score
         skill, score, triggers = scored[0]
-        return SkillMatch(skill=skill, score=score, matched_triggers=triggers)
+        return SkillMatch(
+            skill=skill,
+            score=score,
+            matched_triggers=triggers,
+            low_confidence=score < MINIMUM_CONFIDENCE_THRESHOLD,
+        )
 
     def get_skill_by_name(self, name: str) -> SkillDescriptor | None:
         """Look up a skill by name."""

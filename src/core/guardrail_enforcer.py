@@ -94,6 +94,33 @@ class TaskContext:
     approved_repos: list[str] = field(default_factory=list)
     tls_configs: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
+    # Session / cost limit fields
+    active_sessions_for_org: int = 0
+    active_sessions_for_user: int = 0
+    estimated_session_minutes: float = 0.0
+    current_monthly_cost: float = 0.0
+    org_id: str = ""
+    user_id: str = ""
+
+
+@dataclass
+class RemediationResult:
+    """Result of an auto-remediation attempt."""
+
+    rule_id: str
+    attempted: bool
+    succeeded: bool
+    description: str
+    original_result: GuardrailResult
+    remediated_result: GuardrailResult | None = None
+
+
+# Guardrail rules that support auto-remediation
+_REMEDIABLE_RULES: dict[str, str] = {
+    "GR-PROC-005": "auto_generate_pr_description",
+    "GR-SEC-003": "upgrade_tls_config",
+    "GR-SEC-004": "replace_non_fips_algorithms",
+}
 
 
 class GuardrailEnforcer:
@@ -136,6 +163,82 @@ class GuardrailEnforcer:
 
         return results
 
+    def evaluate_with_remediation(
+        self,
+        context: TaskContext,
+        max_retries: int = 1,
+    ) -> tuple[list[GuardrailResult], list[RemediationResult]]:
+        """Evaluate guardrails; on failure attempt auto-remediation (max 1 retry, no loops).
+
+        Returns (final_results, remediation_log).
+        """
+        results = self.evaluate_guardrails(context)
+        remediation_log: list[RemediationResult] = []
+
+        if max_retries < 1:
+            return results, remediation_log
+
+        # Identify failed rules that are remediable
+        failed_remediable = [
+            r for r in results if not r.passed and r.rule_id in _REMEDIABLE_RULES
+        ]
+
+        if not failed_remediable:
+            return results, remediation_log
+
+        # Attempt remediation for each
+        for failed in failed_remediable:
+            remedy_desc = _REMEDIABLE_RULES[failed.rule_id]
+            remediated_ctx = self._attempt_remediation(failed.rule_id, context)
+            remediation_log.append(
+                RemediationResult(
+                    rule_id=failed.rule_id,
+                    attempted=True,
+                    succeeded=remediated_ctx is not None,
+                    description=remedy_desc,
+                    original_result=failed,
+                )
+            )
+            if remediated_ctx is not None:
+                context = remediated_ctx
+
+        # Re-evaluate after remediation (single retry — no loops)
+        final_results = self.evaluate_guardrails(context)
+
+        # Update remediation log with final outcome
+        for rem in remediation_log:
+            for fr in final_results:
+                if fr.rule_id == rem.rule_id:
+                    rem.remediated_result = fr
+                    rem.succeeded = fr.passed
+
+        return final_results, remediation_log
+
+    @staticmethod
+    def _attempt_remediation(rule_id: str, context: TaskContext) -> TaskContext | None:
+        """Try to auto-fix a guardrail violation.  Returns updated context or None."""
+        if rule_id == "GR-PROC-005":
+            # Auto-generate a minimal PR description
+            if len(context.pr_description.strip()) <= 20:
+                context.pr_description = (
+                    "Auto-generated: This PR implements changes as specified in the task description. "
+                    "Review and update before merge."
+                )
+                return context
+        elif rule_id == "GR-SEC-003":
+            # Upgrade TLS references in code files
+            updated = False
+            for path, content in context.code_files.items():
+                for pattern in INSECURE_TLS_PATTERNS:
+                    if pattern.search(content):
+                        context.code_files[path] = pattern.sub("TLSv1.2", content)
+                        updated = True
+            return context if updated else None
+        elif rule_id == "GR-SEC-004":
+            # Flag non-FIPS but cannot auto-replace safely — return None
+            return None
+        return None
+
     def _evaluate_rule(self, rule: GuardrailRule, context: TaskContext) -> GuardrailResult:
         """Evaluate a single rule against context."""
         evaluators = {
@@ -150,6 +253,8 @@ class GuardrailEnforcer:
             "GR-PROC-005": self._check_pr_description,
             "GR-ACCESS-001": self._check_no_production_access,
             "GR-ACCESS-002": self._check_approved_repos,
+            "GR-LIMIT-001": self._check_session_limits,
+            "GR-LIMIT-002": self._check_cost_ceiling,
         }
 
         evaluator = evaluators.get(rule.rule_id)
@@ -344,4 +449,52 @@ class GuardrailEnforcer:
             action=rule.action,
             details=f"Unapproved repos: {unapproved}" if unapproved else "All repos approved",
             findings=unapproved,
+        )
+
+    def _check_session_limits(self, rule: GuardrailRule, context: TaskContext) -> GuardrailResult:
+        """GR-LIMIT-001: Concurrent session limits per org and per user."""
+        from src.config import settings as _settings
+
+        findings: list[str] = []
+        if context.active_sessions_for_org >= _settings.max_concurrent_sessions_per_org:
+            findings.append(
+                f"Org {context.org_id} has {context.active_sessions_for_org} active sessions "
+                f"(limit: {_settings.max_concurrent_sessions_per_org})"
+            )
+        if context.active_sessions_for_user >= _settings.max_concurrent_sessions_per_user:
+            findings.append(
+                f"User {context.user_id} has {context.active_sessions_for_user} active sessions "
+                f"(limit: {_settings.max_concurrent_sessions_per_user})"
+            )
+
+        return GuardrailResult(
+            rule_id=rule.rule_id,
+            name=rule.name,
+            passed=len(findings) == 0,
+            severity=rule.severity,
+            action=rule.action,
+            details="Within session limits" if not findings else "; ".join(findings),
+            findings=findings,
+        )
+
+    def _check_cost_ceiling(self, rule: GuardrailRule, context: TaskContext) -> GuardrailResult:
+        """GR-LIMIT-002: Monthly cost ceiling per organization."""
+        from src.config import settings as _settings
+
+        projected_cost = (
+            context.current_monthly_cost
+            + context.estimated_session_minutes * _settings.cost_per_session_minute
+        )
+        passed = projected_cost <= _settings.max_monthly_cost_per_org
+        detail = (
+            f"Projected: ${projected_cost:,.2f} / ${_settings.max_monthly_cost_per_org:,.2f} ceiling"
+        )
+
+        return GuardrailResult(
+            rule_id=rule.rule_id,
+            name=rule.name,
+            passed=passed,
+            severity=rule.severity,
+            action=rule.action,
+            details=detail,
         )
