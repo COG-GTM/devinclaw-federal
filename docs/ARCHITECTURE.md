@@ -110,8 +110,10 @@ How the pages reach the API:
 | Page | Calls | Works under Compose (nginx :3000)? |
 |------|-------|------------------------------------|
 | `/` | `fetch("/api/health")` | No: nginx proxies it to the API, which serves `/health`, not `/api/health` (404) |
-| `/topology`, `/trace`, `/rollups` | Hard-coded `http://localhost:8420/api/v1/visibility/...` | No: the nginx CSP allows `connect-src 'self' http://devinclaw-api:8420` only, so the browser blocks the call; works with `make dev` |
+| `/topology`, `/trace`, `/rollups` | Hard-coded `http://localhost:8420/api/v1/visibility/...` | No: the nginx CSP allows `connect-src 'self' http://devinclaw-api:8420` only, so the browser blocks the call; the URL targets the `make dev` setup (not verified there) |
 | `/terminal` | WebSocket `/ws/terminal/default`, proxied by nginx | Connects, then closes because the page sends no token |
+
+Under Compose, the top-nav links (`/terminal`, `/trace`, `/topology`, `/rollups`) get an nginx 301 to `http://localhost/<route>/`, which drops the `:3000` host port, so clicking them fails. Opening `http://localhost:3000/<route>/` directly (with the trailing slash) loads the page.
 
 The `/api/v1/visibility/*` routes do not call `get_current_user`, so they answer without a token.
 
