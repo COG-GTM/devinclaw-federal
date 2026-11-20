@@ -53,7 +53,7 @@ Route handlers then call `middleware/rbac.py` helpers (`get_current_user`, `requ
 | `/api/v1/memory` | `routes/memory.py` | `MemoryManager` (in-memory list, keyword-overlap search) |
 | `/api/v1/audit` | `routes/audit.py` | `AuditWriter` over `audit/` files; SBOM (`core/sbom_generator.py`) and OSCAL (`core/oscal_exporter.py`) generators |
 | `/api/v1/compliance` | `routes/compliance.py` | Compliance summaries built from bundled config |
-| `/api/v1/visibility` | `routes/visibility.py` | `core/visibility.py`: static service topology, traces, rollups, role dashboards |
+| `/api/v1/visibility` | `routes/visibility.py` | `core/visibility.py`: static service topology, traces, rollups, role dashboards (no auth check) |
 | `/ws/terminal/{session_id}` | `routes/ws.py` | Authenticated WebSocket connection registry; input is acknowledged, not forwarded to a PTY |
 | `/health` | `main.py` | Liveness JSON |
 
@@ -104,6 +104,16 @@ Next.js 14 App Router built with `output: "export"` into static HTML, so it has 
 | `/rollups` | Metrics rollups |
 
 `layout.tsx` provides the top navigation (Dashboard, Terminal, Trace, Topology, Rollups). The `/` page also renders a sidebar (`NAV_ITEMS`) that links to `/tasks`, `/sessions`, `/skills`, `/compliance` and `/audit`; those pages do not exist in the export, so nginx's `try_files ... /index.html` fallback serves the home page instead.
+
+How the pages reach the API:
+
+| Page | Calls | Works under Compose (nginx :3000)? |
+|------|-------|------------------------------------|
+| `/` | `fetch("/api/health")` | No: nginx proxies it to the API, which serves `/health`, not `/api/health` (404) |
+| `/topology`, `/trace`, `/rollups` | Hard-coded `http://localhost:8420/api/v1/visibility/...` | No: the nginx CSP allows `connect-src 'self' http://devinclaw-api:8420` only, so the browser blocks the call; works with `make dev` |
+| `/terminal` | WebSocket `/ws/terminal/default`, proxied by nginx | Connects, then closes because the page sends no token |
+
+The `/api/v1/visibility/*` routes do not call `get_current_user`, so they answer without a token.
 
 ## Security Controls in Code
 

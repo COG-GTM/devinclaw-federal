@@ -44,6 +44,7 @@ Diagram source: [`docs/diagrams/architecture.dot`](docs/diagrams/architecture.do
 - The 12-step `Orchestrator` in `src/core/orchestrator.py` is not called by any route: `POST /api/v1/tasks` stores the task as `queued`.
 - The CLI bridge (`src/cli/`) and scheduler (`src/scheduler/`) are not wired to the API; the terminal WebSocket acknowledges input but does not forward it to a PTY.
 - Audit entries and evidence packs are written as files under `audit/logs/` and `audit/evidence-packs/`.
+- Under Docker Compose the dashboard's Topology, Trace and Rollups pages cannot load data (they call `http://localhost:8420` directly, which the nginx CSP blocks), and the home page health check calls `/api/health`, which does not exist; see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#dashboard-dashboard).
 
 ### What Changed from OpenClaw-Dependent to Standalone
 
