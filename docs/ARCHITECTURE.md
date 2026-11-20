@@ -103,7 +103,7 @@ Next.js 14 App Router built with `output: "export"` into static HTML, so it has 
 | `/topology` | Service topology view |
 | `/rollups` | Metrics rollups |
 
-`layout.tsx` provides the top navigation (Dashboard, Terminal, Trace, Topology, Rollups).
+`layout.tsx` provides the top navigation (Dashboard, Terminal, Trace, Topology, Rollups). The `/` page also renders a sidebar (`NAV_ITEMS`) that links to `/tasks`, `/sessions`, `/skills`, `/compliance` and `/audit`; those pages do not exist yet and return 404.
 
 ## Security Controls in Code
 
