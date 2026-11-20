@@ -1,0 +1,66 @@
+// DevinClaw Federal — runtime architecture (as implemented on main).
+// Edit this file, then re-render:
+//   dot -Tpng -Gdpi=110 docs/diagrams/architecture.dot -o docs/diagrams/architecture.png
+//   dot -Tsvg docs/diagrams/architecture.dot -o docs/diagrams/architecture.svg
+// Solid edges = called by the running API today.
+// Dashed edges = code or infrastructure that exists but is not wired into any request path yet.
+digraph devinclaw_federal {
+  graph [rankdir=TB, fontname="DejaVu Sans", fontsize=18, labelloc=t, nodesep=0.35, ranksep=0.55,
+         label="DevinClaw Federal — standalone architecture (docker-compose.yml)", pad=0.3];
+  node  [shape=box, style="rounded,filled", fillcolor=white, fontname="DejaVu Sans", fontsize=16, color="#475569"];
+  edge  [fontname="DejaVu Sans", fontsize=13, color="#334155"];
+
+  user   [label="Engineer\n(browser)", shape=oval, fillcolor="#e0f2fe"];
+  client [label="API client\n(curl / CI / SIEM)", shape=oval, fillcolor="#e0f2fe"];
+
+  subgraph cluster_dash {
+    label="devinclaw-dashboard container  :3000 → nginx :80"; style="rounded,filled"; fillcolor="#eff6ff"; color="#3b82f6";
+    nginx [label="nginx 1.27\nstatic files + reverse proxy\n(docker/nginx.conf)"];
+    pages [label="Next.js 14 static export\n/  /terminal  /trace\n/topology  /rollups"];
+    { rank=same; nginx; pages; }
+  }
+
+  subgraph cluster_api {
+    label="devinclaw-api container  :8420  (uvicorn src.api.main:app, 4 workers)"; style="rounded,filled"; fillcolor="#f0fdf4"; color="#16a34a";
+    mw [label="Middleware (outermost first)\nCORS → ZeroTrust (JWT + IP check)\n→ InactivityTimeout → AuditLog"];
+    routes [label="Routers\n/auth  /api/v1/{tasks, sessions, skills,\nschedules, memory, audit, compliance}\n/api/v1/visibility  /ws/terminal/{id}  /health"];
+    router_skill [label="SkillRouter\n(loaded at startup)"];
+    stores [label="In-process dicts\nusers · orgs · API keys · tasks · sessions\nschedules · custom skills · WS connections", fillcolor="#fef9c3"];
+    memmgr [label="MemoryManager\n(in-memory, keyword search)", fillcolor="#fef9c3"];
+    auditw [label="AuditWriter\nSHA-256 hashed JSONL"];
+    viz [label="Visibility / OSCAL / SBOM\n(static topology, generated reports)"];
+    orch [label="Orchestrator (12 steps)\nGuardrailEnforcer · SpokeSelector\nArenaExecutor · SDLCValidator\nSessionManager · SpokeExecutor", style="rounded,filled,dashed", fillcolor="#f1f5f9"];
+    idle [label="Not wired to routes yet\nCLIBridge (PTY) · DevinClawScheduler (arq)\nauth/models.py (SQLAlchemy) · Vault · CAC/PIV", style="rounded,filled,dashed", fillcolor="#f1f5f9"];
+    mw -> routes;
+  }
+
+  subgraph cluster_files {
+    label="Repository files baked into the API image"; style="rounded,filled"; fillcolor="#fff7ed"; color="#ea580c";
+    skills [label="skill-descriptors.json\nskills/  (15 SKILL.md)"];
+    auditdir [label="audit/\nguardrail-config.json (11 rules)\nsdlc-checklist.json · arena-config.json\nlogs/audit-*.jsonl · evidence-packs/"];
+    { rank=same; skills; auditdir; }
+  }
+
+  pg    [label="PostgreSQL 16\n:5432  (pgdata volume)", shape=cylinder, fillcolor="#f1f5f9", style="filled,dashed"];
+  redis [label="Redis 7\n:6379  (redisdata volume)", shape=cylinder, fillcolor="#f1f5f9", style="filled,dashed"];
+  devin [label="Devin API\nhttps://api.devin.ai/v1", shape=component, fillcolor="#f1f5f9", style="filled,dashed"];
+
+  user -> nginx [label="HTTP"];
+  nginx -> pages;
+  nginx -> mw [label="proxy /api/  /auth/\n/health  /ws/"];
+  client -> mw [label="REST + JWT"];
+
+  routes -> stores;
+  routes -> memmgr [label="/memory"];
+  routes -> auditw [label="/audit"];
+  routes -> viz [label="/visibility\n/audit/oscal, /sbom"];
+  routes -> router_skill [label="/skills"];
+  router_skill -> skills;
+  auditw -> auditdir;
+
+  routes -> orch [style=dashed, label="tasks only queued;\nno route calls it"];
+  orch -> devin [style=dashed, label="httpx"];
+  orch -> auditdir [style=dashed];
+  idle -> pg [style=dashed, label="declared,\nunused"];
+  idle -> redis [style=dashed, label="declared,\nunused"];
+}

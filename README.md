@@ -32,64 +32,18 @@ DevinClaw Federal turns natural language into executed, tested, reviewed, and au
 
 ## Standalone Architecture
 
-DevinClaw Federal is a self-contained platform with four services orchestrated via Docker Compose:
+DevinClaw Federal is a self-contained platform with four services orchestrated via Docker Compose: an nginx container serving the static Next.js dashboard (port 3000) and proxying to the FastAPI API (port 8420), plus PostgreSQL (5432) and Redis (6379).
 
-```
-                    +----------------------+
-                    |     ENGINEER         |
-                    |  (Natural Language)   |
-                    +----------+-----------+
-                               |
-              +----------------v----------------+
-              |     DEVINCLAW DASHBOARD         |
-              |     Next.js + Embedded Terminal  |
-              |     Port 3000                    |
-              +----------------+----------------+
-                               |
-              +----------------v----------------+
-              |     DEVINCLAW API (FastAPI)      |
-              |     Port 8420                    |
-              |                                 |
-              |  +-----------------------------+|
-              |  | Orchestration Engine         ||
-              |  |  - Skill Router             ||
-              |  |  - Spoke Selector           ||
-              |  |  - Guardrail Enforcer       ||
-              |  |  - Arena Executor           ||
-              |  |  - SDLC Validator           ||
-              |  |  - Session Manager          ||
-              |  |  - Audit Writer             ||
-              |  |  - Memory Manager           ||
-              |  +-----------------------------+|
-              |                                 |
-              |  +-----------------------------+|
-              |  | Auth & Multi-Tenancy        ||
-              |  |  - JWT with IP binding      ||
-              |  |  - RBAC (admin/eng/viewer)  ||
-              |  |  - Zero Trust middleware     ||
-              |  |  - Audit logging            ||
-              |  +-----------------------------+|
-              |                                 |
-              |  +-----------------------------+|
-              |  | CLI Bridge + Terminal        ||
-              |  |  - PTY subprocess mgmt      ||
-              |  |  - WebSocket streaming       ||
-              |  |  - Auto-retry on crash       ||
-              |  +-----------------------------+|
-              |                                 |
-              |  +-----------------------------+|
-              |  | Scheduler (arq + Redis)     ||
-              |  |  - Cron-based recurring      ||
-              |  |  - Webhook-triggered         ||
-              |  |  - Built-in nightly scans    ||
-              |  +-----------------------------+|
-              +----+------------------+---------+
-                   |                  |
-          +--------v------+   +------v--------+
-          |  PostgreSQL   |   |    Redis       |
-          |  Port 5432    |   |  Port 6379     |
-          +---------------+   +---------------+
-```
+![DevinClaw Federal architecture](docs/diagrams/architecture.png)
+
+Diagram source: [`docs/diagrams/architecture.dot`](docs/diagrams/architecture.dot) (editable Graphviz) · renders: [PNG](docs/diagrams/architecture.png) · [SVG](docs/diagrams/architecture.svg). Solid edges are paths the running API uses today; dashed ones exist in code or in `docker-compose.yml` but are not yet on a request path. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full breakdown.
+
+**Current implementation status:**
+- API state (users, orgs, API keys, tasks, sessions, schedules, custom skills, memory) is held in in-process Python dicts per Uvicorn worker. It is lost on restart and not shared across the 4 workers in the API container.
+- PostgreSQL and Redis are started by Docker Compose, but no application code connects to them yet (`src/auth/models.py` defines SQLAlchemy models without an engine).
+- The 12-step `Orchestrator` in `src/core/orchestrator.py` is not called by any route: `POST /api/v1/tasks` stores the task as `queued`.
+- The CLI bridge (`src/cli/`) and scheduler (`src/scheduler/`) are not wired to the API; the terminal WebSocket acknowledges input but does not forward it to a PTY.
+- Audit entries and evidence packs are written as files under `audit/logs/` and `audit/evidence-packs/`.
 
 ### What Changed from OpenClaw-Dependent to Standalone
 
@@ -106,8 +60,8 @@ DevinClaw Federal is a self-contained platform with four services orchestrated v
 | Dashboard | None | Next.js with embedded terminal |
 | Deployment | `setup.sh` + OpenClaw | `docker-compose up` |
 | API Surface | None | Full REST API + WebSocket |
-| Scheduling | None | arq (Redis-backed) scheduler |
-| Memory System | None | Four-scope compound learning |
+| Scheduling | None | `src/scheduler/` (arq-style job definitions; in-memory, not wired to the API yet) |
+| Memory System | None | Four-scope compound learning (in-memory, keyword search) |
 
 ---
 
@@ -127,8 +81,8 @@ make dev
 The system starts four services:
 - **Dashboard**: http://localhost:3000 — Next.js frontend with terminal
 - **API**: http://localhost:8420 — FastAPI backend with Swagger docs at /docs
-- **PostgreSQL**: localhost:5432 — persistent storage
-- **Redis**: localhost:6379 — job scheduling and caching
+- **PostgreSQL**: localhost:5432 — provisioned for persistent storage (not yet used by the API)
+- **Redis**: localhost:6379 — provisioned for job scheduling and caching (not yet used by the API)
 
 **Prerequisites:** Docker + Docker Compose, or Python 3.12+ and Node.js 20+ for local dev.
 
@@ -216,6 +170,9 @@ REDIS_URL=redis://localhost:6379/0
 | GET | `/api/v1/audit/export` | Export JSON/CSV (SIEM) |
 | GET | `/api/v1/audit/evidence-packs` | List evidence packs |
 | GET | `/api/v1/audit/evidence-packs/{id}` | Download pack |
+| GET | `/api/v1/audit/sbom` | CycloneDX SBOM |
+| GET | `/api/v1/audit/oscal` | OSCAL system security plan |
+| GET | `/api/v1/audit/schemas` | Artifact JSON schemas |
 
 ### Schedule
 | Method | Endpoint | Description |
@@ -230,13 +187,23 @@ REDIS_URL=redis://localhost:6379/0
 |--------|----------|-------------|
 | GET | `/api/v1/memory` | List memory entries |
 | POST | `/api/v1/memory` | Create entry |
-| GET | `/api/v1/memory/search` | Semantic search |
+| GET | `/api/v1/memory/search` | Keyword search |
 | DELETE | `/api/v1/memory/{id}` | Remove entry |
+
+### Visibility
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/visibility/topology` | Service topology graph (static) |
+| GET | `/api/v1/visibility/trace/{task_id}` | Task trace |
+| GET | `/api/v1/visibility/traces` | List traces |
+| GET | `/api/v1/visibility/rollups` | Metrics rollups |
+| POST | `/api/v1/visibility/correlate` | Correlate events |
+| GET | `/api/v1/visibility/dashboard/{dev,pm,ciso}` | Role dashboards |
 
 ### WebSocket
 | Endpoint | Description |
 |----------|-------------|
-| `/ws/terminal/{session_id}` | Bidirectional CLI terminal |
+| `/ws/terminal/{session_id}` | Terminal WebSocket (authenticated; input forwarding to the CLI bridge not wired yet) |
 
 ### Health
 | Method | Endpoint | Description |
@@ -367,29 +334,38 @@ devinclaw-federal/
 │   │   │   ├── memory.py  # Four-scope memory system
 │   │   │   ├── audit.py   # Audit trail + evidence packs
 │   │   │   ├── compliance.py # NIST/STIG/FedRAMP dashboards
+│   │   │   ├── visibility.py # Topology, traces, rollups, role dashboards
 │   │   │   └── ws.py      # WebSocket terminal streaming
 │   │   └── middleware/     # Security middleware
 │   │       ├── zero_trust.py # Zero Trust request flow
 │   │       ├── rbac.py    # Role-based access control
+│   │       ├── inactivity_timeout.py # Idle token timeout
 │   │       └── audit_log.py # Request logging (NIST AU-3)
 │   ├── core/              # Orchestration engine
 │   │   ├── orchestrator.py # Main 12-step orchestration loop
 │   │   ├── skill_router.py # Keyword -> skill routing
 │   │   ├── spoke_selector.py # Devin spoke selection matrix
+│   │   ├── spoke_executor.py # Common spoke interface + fallback
 │   │   ├── session_manager.py # Devin API client + session registry
-│   │   ├── guardrail_enforcer.py # 10 hard gate enforcement
+│   │   ├── guardrail_enforcer.py # Rules from audit/guardrail-config.json
 │   │   ├── sdlc_validator.py # 10-phase SDLC validation
 │   │   ├── arena_executor.py # Multi-session divergence detection
-│   │   └── audit_writer.py # SHA-256 hashed audit entries
+│   │   ├── audit_writer.py # SHA-256 hashed audit entries
+│   │   ├── visibility.py  # Topology, traces, rollups
+│   │   ├── oscal_exporter.py # OSCAL SSP export
+│   │   ├── sbom_generator.py # CycloneDX SBOM
+│   │   └── schemas.py     # Shared data models
 │   ├── auth/              # Authentication & multi-tenancy
-│   │   ├── models.py      # SQLAlchemy ORM (User, Org, APIKey, Session)
+│   │   ├── models.py      # SQLAlchemy ORM (User, Org, APIKey, Session; not yet wired)
 │   │   ├── jwt.py         # JWT creation/verification with IP binding
-│   │   └── passwords.py   # bcrypt-12, 14+ char policy, lockout
+│   │   ├── passwords.py   # bcrypt-12, 14+ char policy, lockout
+│   │   ├── vault.py       # Secrets backend interface (env vars / Vault stub)
+│   │   └── cac_piv.py     # CAC/PIV client-certificate validation
 │   ├── cli/               # Devin CLI bridge
 │   │   ├── bridge.py      # PTY subprocess management
 │   │   └── stream.py      # Real-time output streaming
 │   ├── scheduler/         # Job scheduling
-│   │   ├── scheduler.py   # arq (Redis-backed) scheduler
+│   │   ├── scheduler.py   # Job scheduler (in-memory registry; arq/Redis planned)
 │   │   └── jobs.py        # Built-in scheduled jobs
 │   ├── memory/            # Compound learning
 │   │   └── memory_manager.py # Four-scope memory (session/user/org/project)
@@ -397,10 +373,14 @@ devinclaw-federal/
 │
 ├── dashboard/             # Next.js frontend
 │   ├── src/app/           # App Router pages
+│   │   ├── layout.tsx     # Top navigation
 │   │   ├── page.tsx       # Operations dashboard
-│   │   └── terminal/page.tsx # Embedded CLI terminal
+│   │   ├── terminal/page.tsx # Embedded CLI terminal
+│   │   ├── trace/page.tsx # Task trace view
+│   │   ├── topology/page.tsx # Service topology view
+│   │   └── rollups/page.tsx # Metrics rollups
 │   ├── package.json
-│   └── next.config.js
+│   └── next.config.js     # Static export (served by nginx)
 │
 ├── docker-compose.yml     # One-command deployment
 ├── docker/                # Container images
@@ -432,7 +412,8 @@ devinclaw-federal/
 ├── playbooks/             # Devin playbooks
 ├── compliance/            # STIG, NIST, FedRAMP, FISMA, RMF, Zero Trust
 ├── skills-parser/         # Convert skills -> Devin playbooks
-└── docs/                  # Architecture, SDLC mapping, use cases, FAQ
+├── scripts/               # smoke_test.sh and helper scripts
+└── docs/                  # Architecture (+ diagrams/), SDLC mapping, use cases, FAQ
 ```
 
 ---
@@ -452,8 +433,11 @@ make dev-dashboard
 # Run both
 make dev
 
-# Run tests
+# Run tests (expects a tests/ directory, which does not exist yet)
 make test
+
+# Repository smoke test (skills, parser, docs, validators)
+bash scripts/smoke_test.sh
 
 # Lint
 make lint
@@ -471,7 +455,7 @@ make deploy
 
 | Document | What It Covers |
 |----------|---------------|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Full system architecture with data flow diagrams |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Standalone architecture, request path, state, and the Graphviz diagram ([DOT](docs/diagrams/architecture.dot), [PNG](docs/diagrams/architecture.png), [SVG](docs/diagrams/architecture.svg)) |
 | [docs/SDLC-MAPPING.md](docs/SDLC-MAPPING.md) | Where each tool fits in the development lifecycle |
 | [docs/USE-CASES.md](docs/USE-CASES.md) | Federal enterprise scenarios mapped to skills and Devin capabilities |
 | [docs/QUICK-START.md](docs/QUICK-START.md) | 5-minute setup guide |
