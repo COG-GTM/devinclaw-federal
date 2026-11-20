@@ -1,7 +1,5 @@
 // DevinClaw Federal — runtime architecture (as implemented on main).
-// Edit this file, then re-render:
-//   dot -Tpng -Gdpi=110 docs/diagrams/architecture.dot -o docs/diagrams/architecture.png
-//   dot -Tsvg docs/diagrams/architecture.dot -o docs/diagrams/architecture.svg
+// Edit this file, then re-render with docs/diagrams/render.sh.
 // Solid edges = called by the running API today.
 // Dashed edges = code or infrastructure that exists but is not wired into any request path yet.
 digraph devinclaw_federal {

@@ -7,12 +7,7 @@ This document describes the architecture as implemented in this repository: a st
 Diagram source: [`diagrams/architecture.dot`](diagrams/architecture.dot) (Graphviz, editable) · renders: [PNG](diagrams/architecture.png) · [SVG](diagrams/architecture.svg).
 Solid edges are paths the running API uses today. Dashed edges and boxes are code or infrastructure that exists but is not yet called from any request path.
 
-To re-render after editing the DOT file:
-
-```bash
-dot -Tpng -Gdpi=110 docs/diagrams/architecture.dot -o docs/diagrams/architecture.png
-dot -Tsvg docs/diagrams/architecture.dot -o docs/diagrams/architecture.svg
-```
+To re-render after editing the DOT file, run `docs/diagrams/render.sh` (needs Graphviz `dot`).
 
 ---
 
