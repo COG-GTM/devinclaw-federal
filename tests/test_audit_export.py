@@ -32,7 +32,11 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
     with TestClient(app) as test_client:
         resp = test_client.post(
             "/auth/register",
-            json={"email": f"export-{tmp_path.name}@example.com", "password": "Export-Passw0rd!", "org_name": "tests"},
+            json={
+                "email": f"export-{tmp_path.name}@example.com",
+                "password": "Export-Passw0rd!" + "x" * settings.min_password_length,
+                "org_name": "tests",
+            },
         )
         test_client.headers["Authorization"] = f"Bearer {resp.json()['access_token']}"
         yield test_client
@@ -71,3 +75,25 @@ def test_export_requires_auth(client: TestClient) -> None:
     del client.headers["Authorization"]
 
     assert client.get("/api/v1/audit/export").status_code == 401
+
+
+def test_export_sends_fixed_size_chunks(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("src.api.routes.audit.EXPORT_CHUNK_SIZE", 4096)
+    chunk_sizes: list[int] = []
+    original = app.middleware_stack
+
+    async def recording_app(scope, receive, send):  # noqa: ANN001, ANN202
+        async def recording_send(message):  # noqa: ANN001, ANN202
+            if message["type"] == "http.response.body" and message.get("body"):
+                chunk_sizes.append(len(message["body"]))
+            await send(message)
+
+        await original(scope, receive, recording_send)
+
+    monkeypatch.setattr(app, "middleware_stack", recording_app)
+    resp = client.get("/api/v1/audit/export")
+
+    assert sum(chunk_sizes) == len(resp.content)
+    assert len(chunk_sizes) == -(-len(resp.content) // 4096)
+    assert max(chunk_sizes) == 4096
+    assert len(resp.content) > 4096

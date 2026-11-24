@@ -15,6 +15,7 @@ import csv
 import io
 import json
 import os
+from collections.abc import Iterator
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -24,6 +25,15 @@ from src.api.middleware.rbac import get_current_user
 from src.config import settings
 
 router = APIRouter(prefix="/audit", tags=["audit"])
+
+
+EXPORT_CHUNK_SIZE = 64 * 1024
+
+
+def _chunks(body: bytes) -> Iterator[bytes]:
+    """Yield the export body in fixed-size chunks (BytesIO would yield one chunk per line)."""
+    for start in range(0, len(body), EXPORT_CHUNK_SIZE):
+        yield body[start : start + EXPORT_CHUNK_SIZE]
 
 
 def _get_audit_writer():  # noqa: ANN201
@@ -86,14 +96,14 @@ async def export_audit(
                 csv_writer.writerow(row)
 
         return StreamingResponse(
-            iter([output.getvalue().encode()]),
+            _chunks(output.getvalue().encode()),
             media_type="text/csv",
             headers={"Content-Disposition": "attachment; filename=audit-export.csv"},
         )
 
     # JSON export
     return StreamingResponse(
-        iter([json.dumps(entries, indent=2, default=str).encode()]),
+        _chunks(json.dumps(entries, indent=2, default=str).encode()),
         media_type="application/json",
         headers={"Content-Disposition": "attachment; filename=audit-export.json"},
     )
