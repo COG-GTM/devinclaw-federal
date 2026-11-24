@@ -86,14 +86,14 @@ async def export_audit(
                 csv_writer.writerow(row)
 
         return StreamingResponse(
-            io.BytesIO(output.getvalue().encode()),
+            iter([output.getvalue().encode()]),
             media_type="text/csv",
             headers={"Content-Disposition": "attachment; filename=audit-export.csv"},
         )
 
     # JSON export
     return StreamingResponse(
-        io.BytesIO(json.dumps(entries, indent=2, default=str).encode()),
+        iter([json.dumps(entries, indent=2, default=str).encode()]),
         media_type="application/json",
         headers={"Content-Disposition": "attachment; filename=audit-export.json"},
     )
